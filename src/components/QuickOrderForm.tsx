@@ -1,38 +1,70 @@
-import React, { useState } from 'react';
-import { toast } from 'react-hot-toast';
-import { Plus, Zap, User, MapPin, Phone, Mail, Package, Euro, Calendar, Clock, Calculator } from 'lucide-react';
-import { Order, Product } from '../types';
-import { generateInvoiceNumber } from '../utils/generateInvoiceNumber';
+import React, { useState } from "react";
+import { toast } from "react-hot-toast";
+import {
+  Plus,
+  Zap,
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  Package,
+  Euro,
+  Calendar,
+  Clock,
+  Calculator,
+} from "lucide-react";
+import { Order, Product } from "../types";
+import { generateInvoiceNumber } from "../utils/generateInvoiceNumber";
+import { GiPerfumeBottle } from "react-icons/gi"; // un flacon de parfum
+import { FaSpa } from "react-icons/fa"; // une icône pour parfums multiples
 
 interface QuickOrderFormProps {
   onSubmit: (order: Order) => void;
   onClose: () => void;
 }
 
-export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProps) {
-  const [customerName, setCustomerName] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [productName, setProductName] = useState('');
-  const [productRef, setProductRef] = useState('');
-  const [productBrand, setProductBrand] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
+export default function QuickOrderForm({
+  onSubmit,
+  onClose,
+}: QuickOrderFormProps) {
+  const [customerName, setCustomerName] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [productName, setProductName] = useState("");
+  const [productRef, setProductRef] = useState("");
+  const [productBrand, setProductBrand] = useState("");
+  const [totalAmount, setTotalAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [quickFillMode, setQuickFillMode] = useState(false);
 
   // Données de remplissage rapide
   const quickFillData = {
     clients: [
-      { name: 'Jean Dupont', address: '123 rue de la Paix, Paris', phone: '06 12 34 56 78', email: 'jean@example.com' },
-      { name: 'Marie Martin', address: '456 avenue des Champs, Lyon', phone: '06 98 76 54 32', email: 'marie@example.com' },
-      { name: 'Pierre Durand', address: '789 boulevard Saint-Germain, Marseille', phone: '06 11 22 33 44', email: 'pierre@example.com' }
+      {
+        name: "Jean Dupont",
+        address: "123 rue de la Paix, Paris",
+        phone: "06 12 34 56 78",
+        email: "jean@example.com",
+      },
+      {
+        name: "Marie Martin",
+        address: "456 avenue des Champs, Lyon",
+        phone: "06 98 76 54 32",
+        email: "marie@example.com",
+      },
+      {
+        name: "Pierre Durand",
+        address: "789 boulevard Saint-Germain, Marseille",
+        phone: "06 11 22 33 44",
+        email: "pierre@example.com",
+      },
     ],
     products: [
-      { name: 'Parfum Homme', ref: 'PH001', brand: 'Chanel' },
-      { name: 'Parfum Femme', ref: 'PF001', brand: 'Dior' },
-      { name: 'Eau de Toilette', ref: 'EDT001', brand: 'Hermès' }
-    ]
+      { name: "Parfum Homme", ref: "PH001", brand: "Chanel" },
+      { name: "Parfum Femme", ref: "PF001", brand: "Dior" },
+      { name: "Eau de Toilette", ref: "EDT001", brand: "Hermès" },
+    ],
   };
 
   const fillQuickClient = (client: any) => {
@@ -40,52 +72,60 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
     setAddress(client.address);
     setPhone(client.phone);
     setEmail(client.email);
-    toast.success('Client rempli automatiquement');
+    toast.success("Client rempli automatiquement");
   };
 
   const fillQuickProduct = (product: any) => {
     setProductName(product.name);
     setProductRef(product.ref);
     setProductBrand(product.brand);
-    toast.success('Produit rempli automatiquement');
+    toast.success("Produit rempli automatiquement");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!customerName || !address || !productName || !productRef || !totalAmount) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+
+    if (
+      !customerName ||
+      !address ||
+      !productName ||
+      !productRef ||
+      !totalAmount
+    ) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
       return;
     }
 
     setLoading(true);
     try {
       const invoiceNumber = await generateInvoiceNumber();
-      
+
       const order: Order = {
         id: Date.now().toString(),
         customerName,
         address,
         phone: phone || undefined,
         email: email || undefined,
-        products: [{ 
-          name: productName, 
-          reference: productRef,
-          parfumBrand: productBrand || undefined
-        }],
+        products: [
+          {
+            name: productName,
+            reference: productRef,
+            parfumBrand: productBrand || undefined,
+          },
+        ],
         invoiceNumber,
         totalAmount: parseFloat(totalAmount),
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         isPaid: false,
-        status: 'ordered'
+        status: "ordered",
       };
 
       onSubmit(order);
-      toast.success('Commande rapide créée !');
+      toast.success("Commande rapide créée !");
       onClose();
     } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la création');
+      console.error("Erreur:", error);
+      toast.error("Erreur lors de la création");
     } finally {
       setLoading(false);
     }
@@ -116,17 +156,21 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
               className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center"
             >
               <Zap className="h-4 w-4 mr-1" />
-              {quickFillMode ? 'Masquer' : 'Afficher'} le remplissage rapide
+              {quickFillMode ? "Masquer" : "Afficher"} le remplissage rapide
             </button>
           </div>
 
           {quickFillMode && (
             <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-3">Remplissage rapide</h4>
-              
+              <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-3">
+                Remplissage rapide
+              </h4>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h5 className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2">Clients types :</h5>
+                  <h5 className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2">
+                    Clients types :
+                  </h5>
                   <div className="space-y-1">
                     {quickFillData.clients.map((client, index) => (
                       <button
@@ -135,14 +179,16 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
                         onClick={() => fillQuickClient(client)}
                         className="block w-full text-left text-xs p-2 bg-white dark:bg-slate-700 rounded border hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-colors"
                       >
-                        {client.name} - {client.address.split(',')[0]}
+                        {client.name} - {client.address.split(",")[0]}
                       </button>
                     ))}
                   </div>
                 </div>
-                
+
                 <div>
-                  <h5 className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2">Produits types :</h5>
+                  <h5 className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2">
+                    Produits types :
+                  </h5>
                   <div className="space-y-1">
                     {quickFillData.products.map((product, index) => (
                       <button
@@ -196,7 +242,7 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   <MapPin className="h-4 w-4 inline mr-1" />
-                  Adresse *
+                  Adresse
                 </label>
                 <input
                   type="text"
@@ -204,7 +250,6 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
                   placeholder="123 rue Example, Paris"
-                  required
                 />
               </div>
               <div>
@@ -221,7 +266,6 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
                 />
               </div>
             </div>
-
 
             {/* Produit */}
             <div className="border-t pt-4">
@@ -259,8 +303,18 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     <span className="inline-flex items-center">
-                      <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      <svg
+                        className="h-4 w-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                        />
                       </svg>
                       Marque parfum
                     </span>
@@ -287,19 +341,33 @@ export default function QuickOrderForm({ onSubmit, onClose }: QuickOrderFormProp
                   type="number"
                   value={totalAmount}
                   onChange={(e) => setTotalAmount(e.target.value)}
-                  className="w-full px-3 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
+                  className="w-full px-3 py-2 pr-24 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
                   placeholder="0.00"
                   step="0.01"
                   required
                 />
+                {/* Bouton 70€ - 2 parfums */}
                 <button
                   type="button"
-                  onClick={() => setTotalAmount('35.00')}
-                  className="absolute inset-y-0 right-12 flex items-center pr-3 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  title="Montant standard 35€"
+                  onClick={() => setTotalAmount("70.00")}
+                  className="absolute inset-y-0 right-16 flex items-center pr-3 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="2 parfums pour 70€"
                 >
-                  <Calculator className="h-4 w-4" />
+                  <FaSpa className="h-5 w-5 mr-1" />
+                  70€
                 </button>
+
+                {/* Bouton 35€ - 1 parfum */}
+                <button
+                  type="button"
+                  onClick={() => setTotalAmount("35.00")}
+                  className="absolute inset-y-0 right-36 flex items-center pr-3 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="1 parfum pour 35€"
+                >
+                  <GiPerfumeBottle className="h-5 w-5 mr-1" />
+                  35€
+                </button>
+
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <span className="text-gray-500 sm:text-sm">€</span>
                 </div>
