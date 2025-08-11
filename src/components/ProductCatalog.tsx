@@ -11,6 +11,26 @@ interface Product {
   created_at: string;
 }
 
+interface LinkedOrder {
+  commande_id: number;
+  commandes: {
+    id: number;
+    numero_commande: string;
+    montant_total: number;
+    date_creation: string;
+    is_paid: boolean;
+    payment_method?: string;
+    status: string;
+    client_id: number;
+    clients: {
+      id: number;
+      nom_complet: string;
+      email?: string;
+      telephone?: string;
+    };
+  };
+}
+
 export default function ProductCatalog() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +39,8 @@ export default function ProductCatalog() {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [linkedOrders, setLinkedOrders] = useState<LinkedOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [formData, setFormData] = useState({
     nom: '',
     reference: '',
@@ -30,6 +52,58 @@ export default function ProductCatalog() {
     loadProducts();
   }, []);
 
+  const loadLinkedOrders = async (productId: string) => {
+    try {
+      setLoadingOrders(true);
+      console.log('🔍 Recherche des commandes pour le produit:', productId);
+      
+      // D'abord, vérifions si le produit existe dans commande_produits
+      const { data: commandeProduits, error: cpError } = await supabase
+        .from('commande_produits')
+        .select('*')
+        .eq('produit_id', productId);
+      
+      console.log('📦 Résultats commande_produits:', commandeProduits);
+      if (cpError) console.error('❌ Erreur commande_produits:', cpError);
+      
+      const { data, error } = await supabase
+        .from('commande_produits')
+        .select(`
+          commande_id,
+          commandes (
+            id,
+            numero_facture,
+            montant_total,
+            date_creation,
+            is_paid,
+            payment_method,
+            status,
+            client_id,
+            clients (
+              id,
+              nom_complet,
+              email,
+              telephone
+            )
+          )
+        `)
+        .eq('produit_id', productId);
+      
+      console.log('🔗 Résultats avec jointure:', data);
+      if (error) {
+        console.error('❌ Erreur jointure:', error);
+        throw error;
+      }
+      
+      setLinkedOrders(data || []);
+    } catch (error) {
+      console.error('Erreur chargement commandes liées:', error);
+      setLinkedOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   const loadProducts = async () => {
     try {
       const { data, error } = await supabase
@@ -37,7 +111,12 @@ export default function ProductCatalog() {
         .select('*')
         .order('nom');
 
-      if (error) throw error;
+      console.log('🔗 Résultats avec jointure:', data);
+      if (error) {
+        console.error('❌ Erreur jointure:', error);
+        throw error;
+      }
+      
       setProducts(data || []);
     } catch (error) {
       console.error('Erreur chargement produits:', error);
@@ -115,7 +194,7 @@ export default function ProductCatalog() {
       parfum_brand: product.parfum_brand || ''
     });
     setEditingProduct(product);
-    setShowForm(true);
+    setShowForm(false); // On ferme le formulaire global
   };
 
   const handleDelete = async (productId: string) => {
@@ -305,7 +384,7 @@ export default function ProductCatalog() {
           <select
             value={brandFilter}
             onChange={(e) => setBrandFilter(e.target.value)}
-            className="px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-slate-700 dark:text-white"
+            className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-slate-700 dark:text-white bg-white shadow-lg hover:shadow-xl hover:border-purple-400 transition-all duration-200 cursor-pointer appearance-none bg-gradient-to-r from-white to-gray-50 dark:from-slate-700 dark:to-slate-600"
           >
             <option value="">Toutes les marques</option>
             {brands.map(brand => (
@@ -315,12 +394,12 @@ export default function ProductCatalog() {
         </div>
       </div>
 
-      {/* Formulaire */}
-      {showForm && (
+      {/* Formulaire pour nouveau produit seulement */}
+      {showForm && !editingProduct && (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
             <Package className="h-5 w-5 mr-2 text-purple-600" />
-            {editingProduct ? 'Modifier le produit' : 'Nouveau produit'}
+            Nouveau produit
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -370,14 +449,13 @@ export default function ProductCatalog() {
                 disabled={updating}
                 className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
               >
-                {updating ? 'Sauvegarde...' : (editingProduct ? 'Modifier' : 'Ajouter')}
+                {updating ? 'Sauvegarde...' : 'Ajouter'}
               </button>
               <button
                 type="button"
                 disabled={updating}
                 onClick={() => {
                   setShowForm(false);
-                  setEditingProduct(null);
                   setFormData({ nom: '', reference: '', parfum_brand: '' });
                 }}
                 className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
@@ -392,61 +470,139 @@ export default function ProductCatalog() {
       {/* Liste des produits */}
       <div className="grid gap-4">
         {filteredProducts.map((product) => (
-          <div
-            key={product.id}
-            className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer"
-            onClick={() => setSelectedProduct(product)}
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                      {product.nom}
-                    </h4>
-                    {product.parfum_brand && (
-                      <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-full text-xs font-bold shadow-sm">
-                        {product.parfum_brand}
+          <div key={product.id}>
+            {/* Carte produit */}
+            <div
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => {
+                setSelectedProduct(product);
+                loadLinkedOrders(product.id);
+              }}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {product.nom}
+                      </h4>
+                      {product.parfum_brand && (
+                        <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-full text-xs font-bold shadow-sm">
+                          {product.parfum_brand}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center text-gray-600 dark:text-gray-400 text-sm">
+                      <Package className="h-4 w-4 mr-2 text-purple-500" />
+                      <span className="font-mono bg-gray-100 dark:bg-slate-600 px-2 py-1 rounded">
+                        {product.reference}
                       </span>
-                    )}
+                    </div>
+
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Créé le {new Date(product.created_at).toLocaleDateString('fr-FR')}
+                    </div>
                   </div>
                   
-                  <div className="flex items-center text-gray-600 dark:text-gray-400 text-sm">
-                    <Package className="h-4 w-4 mr-2 text-purple-500" />
-                    <span className="font-mono bg-gray-100 dark:bg-slate-600 px-2 py-1 rounded">
-                      {product.reference}
-                    </span>
+                  <div className="flex space-x-2 ml-6">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(product);
+                      }}
+                      className="p-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      title="Modifier ce produit"
+                    >
+                      <Edit className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(product.id);
+                      }}
+                      className="p-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Supprimer ce produit"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
                   </div>
-
-                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Créé le {new Date(product.created_at).toLocaleDateString('fr-FR')}
-                  </div>
-                </div>
-                
-                <div className="flex space-x-2 ml-6">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(product);
-                    }}
-                    className="p-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                    title="Modifier ce produit"
-                  >
-                    <Edit className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(product.id);
-                    }}
-                    className="p-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    title="Supprimer ce produit"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
                 </div>
               </div>
             </div>
+
+            {/* Formulaire de modification inline */}
+            {editingProduct && editingProduct.id === product.id && (
+              <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl shadow-lg border border-blue-200 dark:border-blue-800 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <Package className="h-5 w-5 mr-2 text-blue-600" />
+                  Modifier le produit
+                </h3>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Nom du produit *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Nom du produit"
+                        value={formData.nom}
+                        onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Référence *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Référence"
+                        value={formData.reference}
+                        onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Marque parfum
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Chanel, Dior..."
+                        value={formData.parfum_brand}
+                        onChange={(e) => setFormData({ ...formData, parfum_brand: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={updating}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+                    >
+                      {updating ? 'Sauvegarde...' : 'Modifier'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={updating}
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setFormData({ nom: '', reference: '', parfum_brand: '' });
+                      }}
+                      className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -525,6 +681,70 @@ export default function ProductCatalog() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Section commandes liées */}
+                <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
+                    Commandes liées ({linkedOrders.length})
+                  </h3>
+                  
+                  {loadingOrders ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">Chargement...</span>
+                    </div>
+                  ) : linkedOrders.length > 0 ? (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {linkedOrders.map((link) => (
+                        <div key={link.commande_id} className="bg-white dark:bg-slate-600 rounded-lg p-3 border border-gray-200 dark:border-slate-500">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-gray-900 dark:text-white text-sm">
+                                Facture #{link.commandes.numero_facture}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                Client: {link.commandes.clients.nom_complet}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(link.commandes.date_creation).toLocaleDateString('fr-FR')}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                Montant: {link.commandes.montant_total}€
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex flex-col items-end space-y-1">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  link.commandes.status === 'ordered' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  link.commandes.status === 'preparing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                  link.commandes.status === 'delivered' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                  'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                                }`}>
+                                  {link.commandes.status === 'ordered' ? 'Commandé' :
+                                   link.commandes.status === 'preparing' ? 'En préparation' :
+                                   link.commandes.status === 'delivered' ? 'Livré' : link.commandes.status}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  link.commandes.is_paid ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                  'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                }`}>
+                                  {link.commandes.is_paid ? 'Payé' : 'Non payé'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <div className="text-gray-500 dark:text-gray-400 text-sm">
+                        Ce produit n'est utilisé dans aucune commande
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex space-x-3">

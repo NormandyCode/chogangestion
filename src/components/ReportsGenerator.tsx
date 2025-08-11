@@ -420,7 +420,7 @@ export default function ReportsGenerator({ orders }: ReportsGeneratorProps) {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as any)}
-              className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-slate-700 dark:text-white"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-slate-700 dark:text-white bg-white shadow-lg hover:shadow-xl hover:border-orange-400 transition-all duration-200 cursor-pointer appearance-none bg-gradient-to-r from-white to-gray-50 dark:from-slate-700 dark:to-slate-600"
             >
               <option value="week">📅 Cette semaine</option>
               <option value="month">📅 Ce mois</option>

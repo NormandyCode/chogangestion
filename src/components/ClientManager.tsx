@@ -243,6 +243,7 @@ export default function ClientManager({ orders }: ClientManagerProps) {
           </div>
 
           {/* Tri */}
+          {/* Tri */}
           <select
             value={`${sortBy}-${sortDirection}`}
             onChange={(e) => {
@@ -250,7 +251,7 @@ export default function ClientManager({ orders }: ClientManagerProps) {
               setSortBy(field as typeof sortBy);
               setSortDirection(direction as 'asc' | 'desc');
             }}
-            className="px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 dark:bg-slate-700 dark:text-white"
+            className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 dark:bg-slate-700 dark:text-white bg-white shadow-lg hover:shadow-xl hover:border-teal-400 transition-all duration-200 cursor-pointer appearance-none bg-gradient-to-r from-white to-gray-50 dark:from-slate-700 dark:to-slate-600"
           >
             <option value="totalSpent-desc">💰 Plus gros montant</option>
             <option value="totalSpent-asc">💰 Plus petit montant</option>
@@ -263,12 +264,12 @@ export default function ClientManager({ orders }: ClientManagerProps) {
           </select>
 
           {/* Filtre VIP */}
-          <label className="flex items-center space-x-3 px-4 py-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+         <label className="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700 shadow-lg hover:shadow-xl hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-200 cursor-pointer">
             <input
               type="checkbox"
               checked={filterVIP}
               onChange={(e) => setFilterVIP(e.target.checked)}
-              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+             className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 focus:ring-2"
             />
             <span className="text-sm font-medium text-purple-800 dark:text-purple-200 flex items-center">
               <Star className="h-4 w-4 mr-1" />
