@@ -1,31 +1,82 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Trash2, CreditCard, CheckSquare, Banknote, Building2, ChevronDown, ChevronUp, Eye, PackageSearch, Edit, Copy, Filter, Search, Calendar, Euro, Phone, Mail, Package, Truck, Clock, Square, X, Download, Printer, Star, StarOff, Archive, ArchiveRestore, Calculator, TrendingUp, AlertTriangle, CheckCircle2, Clock3, Zap, RotateCcw, ExternalLink } from 'lucide-react';
-import { Order, PaymentMethod } from '../types';
-import OrderDetails from './OrderDetails';
-import EditOrderModal from './EditOrderModal';
-import { generateInvoicePDF } from '../utils/generateInvoicePDF';
-import { generateBulkPDF } from '../utils/generateBulkPDF';
-import { generateExcelFromOrders } from '../utils/generateExcel';
-import { toast } from 'react-hot-toast';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  FileText,
+  Trash2,
+  CreditCard,
+  CheckSquare,
+  Banknote,
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  PackageSearch,
+  Edit,
+  Copy,
+  Filter,
+  Search,
+  Calendar,
+  Euro,
+  Phone,
+  Mail,
+  Package,
+  Truck,
+  Clock,
+  Square,
+  X,
+  Download,
+  Printer,
+  Star,
+  StarOff,
+  Archive,
+  ArchiveRestore,
+  Calculator,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  Zap,
+  RotateCcw,
+  ExternalLink,
+} from "lucide-react";
+import { Order, PaymentMethod } from "../types";
+import OrderDetails from "./OrderDetails";
+import EditOrderModal from "./EditOrderModal";
+import { generateInvoicePDF } from "../utils/generateInvoicePDF";
+import { generateBulkPDF } from "../utils/generateBulkPDF";
+import { generateExcelFromOrders } from "../utils/generateExcel";
+import { toast } from "react-hot-toast";
 
 interface OrderListProps {
   orders: Order[];
   onDelete: (id: string) => void;
   onTogglePayment: (id: string, method: PaymentMethod) => void;
-  onUpdateStatus?: (id: string, status: 'ordered' | 'preparing' | 'delivered') => void;
+  onUpdateStatus?: (
+    id: string,
+    status: "ordered" | "preparing" | "delivered"
+  ) => void;
   onUpdateOrder?: (order: Order) => void;
 }
 
-export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateStatus, onUpdateOrder }: OrderListProps) {
+export default function OrderList({
+  orders,
+  onDelete,
+  onTogglePayment,
+  onUpdateStatus,
+  onUpdateOrder,
+}: OrderListProps) {
   const [openPaymentMenu, setOpenPaymentMenu] = useState<string | null>(null);
   const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [sortField, setSortField] = useState<keyof Order>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'ordered' | 'preparing' | 'delivered' | 'paid' | 'unpaid'>('all');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [sortField, setSortField] = useState<keyof Order>("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "ordered" | "preparing" | "delivered" | "paid" | "unpaid"
+  >("all");
+  const [dateFilter, setDateFilter] = useState<
+    "all" | "today" | "week" | "month"
+  >("all");
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [favoriteOrders, setFavoriteOrders] = useState<string[]>([]);
   const [archivedOrders, setArchivedOrders] = useState<string[]>([]);
@@ -35,77 +86,106 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
   // Raccourcis clavier
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
-      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
-        setSearchTerm('');
+      if (
+        e.key === "Escape" &&
+        document.activeElement === searchInputRef.current
+      ) {
+        setSearchTerm("");
         searchInputRef.current?.blur();
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && document.activeElement !== searchInputRef.current) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "a" &&
+        document.activeElement !== searchInputRef.current
+      ) {
         e.preventDefault();
         handleSelectAll();
       }
-      if (e.key === 'Delete' && selectedOrders.length > 0 && document.activeElement !== searchInputRef.current) {
+      if (
+        e.key === "Delete" &&
+        selectedOrders.length > 0 &&
+        document.activeElement !== searchInputRef.current
+      ) {
         e.preventDefault();
         handleBulkDelete();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [selectedOrders]);
 
   // Charger les favoris et archivés
   useEffect(() => {
-    const savedFavorites = localStorage.getItem('favoriteOrders');
-    const savedArchived = localStorage.getItem('archivedOrders');
+    const savedFavorites = localStorage.getItem("favoriteOrders");
+    const savedArchived = localStorage.getItem("archivedOrders");
     if (savedFavorites) setFavoriteOrders(JSON.parse(savedFavorites));
     if (savedArchived) setArchivedOrders(JSON.parse(savedArchived));
   }, []);
 
   // Sauvegarder les favoris et archivés
   useEffect(() => {
-    localStorage.setItem('favoriteOrders', JSON.stringify(favoriteOrders));
+    localStorage.setItem("favoriteOrders", JSON.stringify(favoriteOrders));
   }, [favoriteOrders]);
 
   useEffect(() => {
-    localStorage.setItem('archivedOrders', JSON.stringify(archivedOrders));
+    localStorage.setItem("archivedOrders", JSON.stringify(archivedOrders));
   }, [archivedOrders]);
 
   const getPaymentMethodIcon = (method?: PaymentMethod) => {
     switch (method) {
-      case 'card': return <CreditCard className="h-4 w-4" />;
-      case 'check': return <CheckSquare className="h-4 w-4" />;
-      case 'cash': return <Banknote className="h-4 w-4" />;
-      case 'transfer': return <Building2 className="h-4 w-4" />;
-      default: return null;
+      case "card":
+        return <CreditCard className="h-4 w-4" />;
+      case "check":
+        return <CheckSquare className="h-4 w-4" />;
+      case "cash":
+        return <Banknote className="h-4 w-4" />;
+      case "transfer":
+        return <Building2 className="h-4 w-4" />;
+      default:
+        return null;
     }
   };
 
   const getPaymentMethodLabel = (method?: PaymentMethod) => {
     switch (method) {
-      case 'card': return 'Carte bancaire';
-      case 'check': return 'Chèque';
-      case 'cash': return 'Espèces';
-      case 'transfer': return 'Virement';
-      default: return 'Non spécifié';
+      case "card":
+        return "Carte bancaire";
+      case "check":
+        return "Chèque";
+      case "cash":
+        return "Espèces";
+      case "transfer":
+        return "Virement";
+      default:
+        return "Non spécifié";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'ordered': return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'preparing': return <Package className="h-4 w-4 text-orange-500" />;
-      case 'delivered': return <Truck className="h-4 w-4 text-green-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
+      case "ordered":
+        return <Clock className="h-4 w-4 text-blue-500" />;
+      case "preparing":
+        return <Package className="h-4 w-4 text-orange-500" />;
+      case "delivered":
+        return <Truck className="h-4 w-4 text-green-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const getStatusLabel = (status: string) => {
-    const labels = { ordered: 'Commandée', preparing: 'En préparation', delivered: 'Livrée' };
-    return labels[status] || 'Commandée';
+    const labels = {
+      ordered: "Commandée",
+      preparing: "En préparation",
+      delivered: "Livrée",
+    };
+    return labels[status] || "Commandée";
   };
 
   const handlePaymentMethodClick = (orderId: string, method: PaymentMethod) => {
@@ -115,14 +195,17 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
 
   const handleSort = (field: keyof Order) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
-  const handleStatusChange = (orderId: string, status: 'ordered' | 'preparing' | 'delivered') => {
+  const handleStatusChange = (
+    orderId: string,
+    status: "ordered" | "preparing" | "delivered"
+  ) => {
     if (onUpdateStatus) {
       onUpdateStatus(orderId, status);
       setOpenStatusMenu(null);
@@ -131,27 +214,31 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
   };
 
   const handleToggleFavorite = (orderId: string) => {
-    setFavoriteOrders(prev => 
-      prev.includes(orderId) 
-        ? prev.filter(id => id !== orderId)
+    setFavoriteOrders((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
         : [...prev, orderId]
     );
-    toast.success(favoriteOrders.includes(orderId) ? 'Retiré des favoris' : 'Ajouté aux favoris');
+    toast.success(
+      favoriteOrders.includes(orderId)
+        ? "Retiré des favoris"
+        : "Ajouté aux favoris"
+    );
   };
 
   const handleToggleArchive = (orderId: string) => {
-    setArchivedOrders(prev => 
-      prev.includes(orderId) 
-        ? prev.filter(id => id !== orderId)
+    setArchivedOrders((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
         : [...prev, orderId]
     );
-    toast.success(archivedOrders.includes(orderId) ? 'Désarchivé' : 'Archivé');
+    toast.success(archivedOrders.includes(orderId) ? "Désarchivé" : "Archivé");
   };
 
   const handleSelectOrder = (orderId: string) => {
-    setSelectedOrders(prev => 
-      prev.includes(orderId) 
-        ? prev.filter(id => id !== orderId)
+    setSelectedOrders((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
         : [...prev, orderId]
     );
   };
@@ -160,15 +247,19 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
     if (selectedOrders.length === filteredOrders.length) {
       setSelectedOrders([]);
     } else {
-      setSelectedOrders(filteredOrders.map(order => order.id));
+      setSelectedOrders(filteredOrders.map((order) => order.id));
     }
   };
 
   const handleBulkDelete = () => {
     if (selectedOrders.length === 0) return;
-    
-    if (confirm(`Êtes-vous sûr de vouloir supprimer ${selectedOrders.length} commande(s) ?`)) {
-      selectedOrders.forEach(orderId => onDelete(orderId));
+
+    if (
+      confirm(
+        `Êtes-vous sûr de vouloir supprimer ${selectedOrders.length} commande(s) ?`
+      )
+    ) {
+      selectedOrders.forEach((orderId) => onDelete(orderId));
       setSelectedOrders([]);
       toast.success(`${selectedOrders.length} commande(s) supprimée(s)`);
     }
@@ -176,124 +267,157 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
 
   const handleBulkArchive = () => {
     if (selectedOrders.length === 0) return;
-    
-    setArchivedOrders(prev => [...prev, ...selectedOrders]);
+
+    setArchivedOrders((prev) => [...prev, ...selectedOrders]);
     setSelectedOrders([]);
     toast.success(`${selectedOrders.length} commande(s) archivée(s)`);
   };
 
   const handleBulkFavorite = () => {
     if (selectedOrders.length === 0) return;
-    
-    setFavoriteOrders(prev => [...prev, ...selectedOrders]);
+
+    setFavoriteOrders((prev) => [...prev, ...selectedOrders]);
     setSelectedOrders([]);
-    toast.success(`${selectedOrders.length} commande(s) ajoutée(s) aux favoris`);
+    toast.success(
+      `${selectedOrders.length} commande(s) ajoutée(s) aux favoris`
+    );
   };
 
   const handleGenerateBulkPDF = () => {
     if (selectedOrders.length === 0) {
-      toast.error('Veuillez sélectionner au moins une commande');
+      toast.error("Veuillez sélectionner au moins une commande");
       return;
     }
 
-    const selectedOrdersData = filteredOrders.filter(order => selectedOrders.includes(order.id));
-    
+    const selectedOrdersData = filteredOrders.filter((order) =>
+      selectedOrders.includes(order.id)
+    );
+
     try {
       generateBulkPDF(selectedOrdersData);
       toast.success(`PDF généré avec ${selectedOrdersData.length} facture(s)`);
       setSelectedOrders([]);
     } catch (error) {
-      console.error('Erreur génération PDF:', error);
-      toast.error('Erreur lors de la génération du PDF');
+      console.error("Erreur génération PDF:", error);
+      toast.error("Erreur lors de la génération du PDF");
     }
   };
 
   const handleGenerateExcel = () => {
     if (selectedOrders.length === 0) {
-      toast.error('Veuillez sélectionner au moins une commande');
+      toast.error("Veuillez sélectionner au moins une commande");
       return;
     }
 
-    const selectedOrdersData = filteredOrders.filter(order => selectedOrders.includes(order.id));
-    
+    const selectedOrdersData = filteredOrders.filter((order) =>
+      selectedOrders.includes(order.id)
+    );
+
     try {
       generateExcelFromOrders(selectedOrdersData);
-      toast.success(`Excel généré avec ${selectedOrdersData.length} commande(s)`);
+      toast.success(
+        `Excel généré avec ${selectedOrdersData.length} commande(s)`
+      );
       setSelectedOrders([]);
     } catch (error) {
-      console.error('Erreur génération Excel:', error);
-      toast.error('Erreur lors de la génération du fichier Excel');
+      console.error("Erreur génération Excel:", error);
+      toast.error("Erreur lors de la génération du fichier Excel");
     }
   };
 
   // Tri et filtrage
   const sortedOrders = [...orders].sort((a, b) => {
-    if (sortField === 'date') {
-      return sortDirection === 'asc'
+    if (sortField === "date") {
+      return sortDirection === "asc"
         ? new Date(a.date).getTime() - new Date(b.date).getTime()
         : new Date(b.date).getTime() - new Date(a.date).getTime();
     }
-    return sortDirection === 'asc'
+    return sortDirection === "asc"
       ? String(a[sortField]).localeCompare(String(b[sortField]))
       : String(b[sortField]).localeCompare(String(a[sortField]));
   });
 
-  let filteredOrders = sortedOrders.filter(order => {
+  let filteredOrders = sortedOrders.filter((order) => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         order.customerName.toLowerCase().includes(searchLower) ||
         order.invoiceNumber.toLowerCase().includes(searchLower) ||
         order.address.toLowerCase().includes(searchLower) ||
-        order.products.some(p => p.name.toLowerCase().includes(searchLower) || p.reference.toLowerCase().includes(searchLower));
-      
+        order.products.some(
+          (p) =>
+            p.name.toLowerCase().includes(searchLower) ||
+            p.reference.toLowerCase().includes(searchLower)
+        );
+
       if (!matchesSearch) return false;
     }
 
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'paid' && !order.isPaid) return false;
-      if (statusFilter === 'unpaid' && order.isPaid) return false;
-      if (['ordered', 'preparing', 'delivered'].includes(statusFilter) && order.status !== statusFilter) return false;
+    if (statusFilter !== "all") {
+      if (statusFilter === "paid" && !order.isPaid) return false;
+      if (statusFilter === "unpaid" && order.isPaid) return false;
+      if (
+        ["ordered", "preparing", "delivered"].includes(statusFilter) &&
+        order.status !== statusFilter
+      )
+        return false;
     }
 
-    if (dateFilter !== 'all') {
+    if (dateFilter !== "all") {
       const orderDate = new Date(order.date);
       const today = new Date();
       const diffTime = today.getTime() - orderDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (dateFilter === 'today' && diffDays > 1) return false;
-      if (dateFilter === 'week' && diffDays > 7) return false;
-      if (dateFilter === 'month' && diffDays > 30) return false;
+      if (dateFilter === "today" && diffDays > 1) return false;
+      if (dateFilter === "week" && diffDays > 7) return false;
+      if (dateFilter === "month" && diffDays > 30) return false;
     }
 
     return true;
   });
 
   if (!showArchived) {
-    filteredOrders = filteredOrders.filter(order => !archivedOrders.includes(order.id));
+    filteredOrders = filteredOrders.filter(
+      (order) => !archivedOrders.includes(order.id)
+    );
   } else {
-    filteredOrders = filteredOrders.filter(order => archivedOrders.includes(order.id));
+    filteredOrders = filteredOrders.filter((order) =>
+      archivedOrders.includes(order.id)
+    );
   }
 
-  filteredOrders.sort((a, b) => (favoriteOrders.includes(b.id) ? 1 : 0) - (favoriteOrders.includes(a.id) ? 1 : 0));
+  filteredOrders.sort(
+    (a, b) =>
+      (favoriteOrders.includes(b.id) ? 1 : 0) -
+      (favoriteOrders.includes(a.id) ? 1 : 0)
+  );
 
-  const totalAmount = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+  const totalAmount = filteredOrders.reduce(
+    (sum, order) => sum + order.totalAmount,
+    0
+  );
 
   const stats = {
     total: filteredOrders.length,
-    paid: filteredOrders.filter(o => o.isPaid).length,
-    unpaid: filteredOrders.filter(o => !o.isPaid).length,
-    favorites: filteredOrders.filter(o => favoriteOrders.includes(o.id)).length,
+    paid: filteredOrders.filter((o) => o.isPaid).length,
+    unpaid: filteredOrders.filter((o) => !o.isPaid).length,
+    favorites: filteredOrders.filter((o) => favoriteOrders.includes(o.id))
+      .length,
     archived: archivedOrders.length,
-    avgAmount: filteredOrders.length > 0 ? totalAmount / filteredOrders.length : 0,
-    thisWeek: filteredOrders.filter(o => new Date(o.date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
-    thisMonth: filteredOrders.filter(o => new Date(o.date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length
+    avgAmount:
+      filteredOrders.length > 0 ? totalAmount / filteredOrders.length : 0,
+    thisWeek: filteredOrders.filter(
+      (o) => new Date(o.date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    ).length,
+    thisMonth: filteredOrders.filter(
+      (o) => new Date(o.date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    ).length,
   };
 
   const SortIcon = ({ field }: { field: keyof Order }) => {
     if (sortField !== field) return null;
-    return sortDirection === 'asc' ? (
+    return sortDirection === "asc" ? (
       <ChevronUp className="h-4 w-4" />
     ) : (
       <ChevronDown className="h-4 w-4" />
@@ -306,9 +430,11 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filtres et recherche</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Filtres et recherche
+            </h3>
           </div>
-          
+
           {/* Recherche principale */}
           <div className="mb-6">
             <div className="relative">
@@ -323,7 +449,7 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
               />
               {searchTerm && (
                 <button
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => setSearchTerm("")}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="h-5 w-5" />
@@ -340,7 +466,7 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="pl-10 pr-4 py-2.5 w-full border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white appearance-none bg-white dark:bg-slate-700 text-sm"
+                className="pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-slate-700 dark:text-white bg-white shadow-lg hover:shadow-md hover:border-purple-400 transition-[box-shadow,border-color,background-color] duration-200 ease-in-out cursor-pointer appearance-none bg-gradient-to-r from-white to-gray-50 dark:from-slate-700 dark:to-slate-600"
               >
                 <option value="all">Tous les statuts</option>
                 <option value="ordered">Commandées</option>
@@ -357,7 +483,7 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
               <select
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value as any)}
-                className="pl-10 pr-4 py-2.5 w-full border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white appearance-none bg-white dark:bg-slate-700 text-sm"
+                className="pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-slate-700 dark:text-white bg-white shadow-lg hover:shadow-md hover:border-purple-400 transition-[box-shadow,border-color,background-color] duration-200 ease-in-out cursor-pointer appearance-none bg-gradient-to-r from-white to-gray-50 dark:from-slate-700 dark:to-slate-600"
               >
                 <option value="all">Toutes les dates</option>
                 <option value="today">Aujourd'hui</option>
@@ -369,9 +495,9 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
             {/* Bouton reset */}
             <button
               onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('all');
-                setDateFilter('all');
+                setSearchTerm("");
+                setStatusFilter("all");
+                setDateFilter("all");
               }}
               className="px-4 py-2.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium text-sm border border-gray-300 dark:border-slate-600"
             >
@@ -382,32 +508,40 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
             <button
               onClick={() => setShowArchived(!showArchived)}
               className={`px-4 py-2.5 rounded-lg font-medium text-sm border transition-colors ${
-                showArchived 
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-600'
-                  : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-slate-600'
+                showArchived
+                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-600"
+                  : "bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-slate-600"
               }`}
             >
               <Archive className="h-4 w-4 mr-2 inline" />
-              {showArchived ? 'Actives' : 'Archivées'}
+              {showArchived ? "Actives" : "Archivées"}
             </button>
           </div>
-          
+
           {/* Indicateur de résultats */}
           <div className="pt-4 border-t border-gray-200 dark:border-slate-600">
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center space-x-6">
                 <span className="flex items-center">
                   <Package className="h-4 w-4 mr-2 text-indigo-500" />
-                  <strong className="text-gray-900 dark:text-white">{filteredOrders.length}</strong> 
-                  <span className="ml-1">commande{filteredOrders.length > 1 ? 's' : ''}</span>
+                  <strong className="text-gray-900 dark:text-white">
+                    {filteredOrders.length}
+                  </strong>
+                  <span className="ml-1">
+                    commande{filteredOrders.length > 1 ? "s" : ""}
+                  </span>
                 </span>
                 <span className="flex items-center">
                   <Euro className="h-4 w-4 mr-2 text-green-500" />
-                  <strong className="text-gray-900 dark:text-white">{totalAmount.toFixed(2)} €</strong>
+                  <strong className="text-gray-900 dark:text-white">
+                    {totalAmount.toFixed(2)} €
+                  </strong>
                   <span className="ml-1">total</span>
                 </span>
               </div>
-              {(searchTerm || statusFilter !== 'all' || dateFilter !== 'all') && (
+              {(searchTerm ||
+                statusFilter !== "all" ||
+                dateFilter !== "all") && (
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
                   Filtres actifs
                 </span>
@@ -444,8 +578,8 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
               <button
                 onClick={() => {
                   // Déclencher l'ouverture du gestionnaire d'email avec les commandes sélectionnées
-                  const event = new CustomEvent('openEmailManager', { 
-                    detail: { selectedOrders } 
+                  const event = new CustomEvent("openEmailManager", {
+                    detail: { selectedOrders },
                   });
                   window.dispatchEvent(event);
                 }}
@@ -497,7 +631,8 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                   className="flex items-center space-x-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                   title="Ctrl+A pour tout sélectionner"
                 >
-                  {selectedOrders.length === filteredOrders.length && filteredOrders.length > 0 ? (
+                  {selectedOrders.length === filteredOrders.length &&
+                  filteredOrders.length > 0 ? (
                     <CheckSquare className="h-4 w-4" />
                   ) : (
                     <Square className="h-4 w-4" />
@@ -507,27 +642,27 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
               <th className="px-3 py-3 text-left w-12">
                 <Star className="h-4 w-4 text-slate-400" />
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                onClick={() => handleSort('date')}
+                onClick={() => handleSort("date")}
               >
                 <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <span>Date</span>
                   <SortIcon field="date" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                onClick={() => handleSort('customerName')}
+                onClick={() => handleSort("customerName")}
               >
                 <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <span>Client</span>
                   <SortIcon field="customerName" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                onClick={() => handleSort('invoiceNumber')}
+                onClick={() => handleSort("invoiceNumber")}
               >
                 <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <span>N° Facture</span>
@@ -553,10 +688,12 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
           </thead>
           <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
             {filteredOrders.map((order) => (
-              <tr 
-                key={order.id} 
+              <tr
+                key={order.id}
                 className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
-                  selectedOrders.includes(order.id) ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                  selectedOrders.includes(order.id)
+                    ? "bg-indigo-50 dark:bg-indigo-900/20"
+                    : ""
                 }`}
               >
                 <td className="px-3 py-4 whitespace-nowrap">
@@ -575,9 +712,15 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                   <button
                     onClick={() => handleToggleFavorite(order.id)}
                     className={`p-1 rounded transition-colors ${
-                      favoriteOrders.includes(order.id) ? 'text-yellow-500' : 'text-gray-400'
+                      favoriteOrders.includes(order.id)
+                        ? "text-yellow-500"
+                        : "text-gray-400"
                     } hover:bg-yellow-50 dark:hover:bg-yellow-900/20`}
-                    title={favoriteOrders.includes(order.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                    title={
+                      favoriteOrders.includes(order.id)
+                        ? "Retirer des favoris"
+                        : "Ajouter aux favoris"
+                    }
                   >
                     {favoriteOrders.includes(order.id) ? (
                       <Star className="h-4 w-4 fill-current" />
@@ -608,23 +751,33 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                     <button
                       type="button"
                       className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                      onClick={() => setOpenStatusMenu(openStatusMenu === order.id ? null : order.id)}
+                      onClick={() =>
+                        setOpenStatusMenu(
+                          openStatusMenu === order.id ? null : order.id
+                        )
+                      }
                     >
                       {getStatusIcon(order.status)}
-                      <span className="ml-1">{getStatusLabel(order.status)}</span>
+                      <span className="ml-1">
+                        {getStatusLabel(order.status)}
+                      </span>
                     </button>
                     {openStatusMenu === order.id && onUpdateStatus && (
                       <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
-                        {(['ordered', 'preparing', 'delivered'] as const).map((status) => (
-                          <button
-                            key={status}
-                            className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
-                            onClick={() => handleStatusChange(order.id, status)}
-                          >
-                            {getStatusIcon(status)}
-                            <span>{getStatusLabel(status)}</span>
-                          </button>
-                        ))}
+                        {(["ordered", "preparing", "delivered"] as const).map(
+                          (status) => (
+                            <button
+                              key={status}
+                              className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
+                              onClick={() =>
+                                handleStatusChange(order.id, status)
+                              }
+                            >
+                              {getStatusIcon(status)}
+                              <span>{getStatusLabel(status)}</span>
+                            </button>
+                          )
+                        )}
                       </div>
                     )}
                   </div>
@@ -632,10 +785,16 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500">
                   <div className="flex space-x-1">
                     {order.email && (
-                      <Mail className="h-4 w-4 text-blue-500" title={order.email} />
+                      <Mail
+                        className="h-4 w-4 text-blue-500"
+                        title={order.email}
+                      />
                     )}
                     {order.phone && (
-                      <Phone className="h-4 w-4 text-green-500" title={order.phone} />
+                      <Phone
+                        className="h-4 w-4 text-green-500"
+                        title={order.phone}
+                      />
                     )}
                   </div>
                 </td>
@@ -653,17 +812,30 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                         <button
                           type="button"
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                          onClick={() => setOpenPaymentMenu(openPaymentMenu === order.id ? null : order.id)}
+                          onClick={() =>
+                            setOpenPaymentMenu(
+                              openPaymentMenu === order.id ? null : order.id
+                            )
+                          }
                         >
                           Non payée
                         </button>
                         {openPaymentMenu === order.id && (
                           <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
-                            {(['card', 'check', 'cash', 'transfer'] as PaymentMethod[]).map((method) => (
+                            {(
+                              [
+                                "card",
+                                "check",
+                                "cash",
+                                "transfer",
+                              ] as PaymentMethod[]
+                            ).map((method) => (
                               <button
                                 key={method}
                                 className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
-                                onClick={() => handlePaymentMethodClick(order.id, method)}
+                                onClick={() =>
+                                  handlePaymentMethodClick(order.id, method)
+                                }
                               >
                                 {getPaymentMethodIcon(method)}
                                 <span>{getPaymentMethodLabel(method)}</span>
@@ -695,9 +867,11 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                       <button
                         onClick={() => {
                           // Importer dynamiquement le service email
-                          import('../services/emailService.ts').then(({ sendOrderConfirmationEmail }) => {
-                            sendOrderConfirmationEmail(order);
-                          });
+                          import("../services/emailService.ts").then(
+                            ({ sendOrderConfirmationEmail }) => {
+                              sendOrderConfirmationEmail(order);
+                            }
+                          );
                         }}
                         className="p-1 text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
                         title="Envoyer email de confirmation"
@@ -714,8 +888,10 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                     </button>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(`${order.customerName} - ${order.invoiceNumber} - ${order.totalAmount}€`);
-                        toast.success('Infos copiées !');
+                        navigator.clipboard.writeText(
+                          `${order.customerName} - ${order.invoiceNumber} - ${order.totalAmount}€`
+                        );
+                        toast.success("Infos copiées !");
                       }}
                       className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded transition-colors"
                       title="Copier infos"
@@ -724,7 +900,9 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                     </button>
                     {order.phone && (
                       <button
-                        onClick={() => window.open(`tel:${order.phone}`, '_self')}
+                        onClick={() =>
+                          window.open(`tel:${order.phone}`, "_self")
+                        }
                         className="p-1 text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
                         title="Appeler"
                       >
@@ -734,7 +912,11 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
                     <button
                       onClick={() => handleToggleArchive(order.id)}
                       className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded transition-colors"
-                      title={archivedOrders.includes(order.id) ? 'Désarchiver' : 'Archiver'}
+                      title={
+                        archivedOrders.includes(order.id)
+                          ? "Désarchiver"
+                          : "Archiver"
+                      }
                     >
                       {archivedOrders.includes(order.id) ? (
                         <ArchiveRestore className="h-4 w-4" />
@@ -755,14 +937,21 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
             ))}
             {filteredOrders.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                <td
+                  colSpan={10}
+                  className="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
+                >
                   <div className="flex flex-col items-center">
                     <PackageSearch className="h-12 w-12 mb-4 text-slate-400" />
                     <p className="text-lg font-medium">
-                      {orders.length === 0 ? 'Aucune commande trouvée' : 'Aucun résultat pour ces filtres'}
+                      {orders.length === 0
+                        ? "Aucune commande trouvée"
+                        : "Aucun résultat pour ces filtres"}
                     </p>
                     <p className="mt-1">
-                      {orders.length === 0 ? 'Commencez par créer une nouvelle commande' : 'Essayez de modifier vos critères de recherche'}
+                      {orders.length === 0
+                        ? "Commencez par créer une nouvelle commande"
+                        : "Essayez de modifier vos critères de recherche"}
                     </p>
                   </div>
                 </td>
@@ -773,12 +962,12 @@ export default function OrderList({ orders, onDelete, onTogglePayment, onUpdateS
       </div>
 
       {selectedOrder && (
-        <OrderDetails 
-          order={selectedOrder} 
-          onClose={() => setSelectedOrder(null)} 
+        <OrderDetails
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
           onRefresh={() => {
             // Déclencher un événement pour recharger les commandes
-            const event = new CustomEvent('refreshOrders');
+            const event = new CustomEvent("refreshOrders");
             window.dispatchEvent(event);
           }}
         />

@@ -483,7 +483,7 @@ export default function OrderManagement() {
                   <div className="flex justify-center lg:justify-start items-center mb-6">
                     <div className="bg-white rounded-full p-4 shadow-lg mr-4">
                       <img 
-                        src="/logo.png" 
+                        src="./logo.png" 
                         alt="L'Atelier de Mickael" 
                         className="h-16 w-16 object-contain"
                       />
@@ -545,17 +545,7 @@ export default function OrderManagement() {
                       </div>
                     </div>
                     
-                    <div className="mt-6 pt-4 border-t border-white/20">
-                      <a
-                        href="https://latelierdemickael.fr"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Visitez notre site
-                      </a>
-                    </div>
+
                   </div>
                 </div>
               </div>
