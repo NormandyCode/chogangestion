@@ -409,18 +409,18 @@ export default function StatsPanel({ orders, onClose }: StatsPanelProps) {
           </div>
 
           {/* Section inférieure - Grid responsive */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="space-y-6">
             {/* Top 5 clients */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
                 <Users className="h-5 w-5 mr-2 text-teal-600" />
                 Top 5 Clients
               </h4>
               {topClients.length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                   {topClients.map((client, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 rounded-lg border border-gray-200 dark:border-slate-600">
-                      <div className="flex items-center space-x-3">
+                    <div key={index} className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 rounded-lg border border-gray-200 dark:border-slate-600">
+                      <div className="flex items-center justify-center mb-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
                           index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
                           index === 1 ? 'bg-gradient-to-r from-gray-400 to-gray-600' :
@@ -429,21 +429,16 @@ export default function StatsPanel({ orders, onClose }: StatsPanelProps) {
                         }`}>
                           {index + 1}
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white text-sm">
-                            {client.name}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {client.orders} commande{client.orders > 1 ? 's' : ''}
-                          </div>
-                        </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-center">
+                        <div className="font-medium text-gray-900 dark:text-white text-sm mb-1 truncate" title={client.name}>
+                          {client.name}
+                        </div>
                         <div className="font-bold text-gray-900 dark:text-white">
                           {client.total.toFixed(2)}€
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {(client.total / client.orders).toFixed(2)}€/cmd
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {client.orders} commande{client.orders > 1 ? 's' : ''}
                         </div>
                       </div>
                     </div>
@@ -458,12 +453,12 @@ export default function StatsPanel({ orders, onClose }: StatsPanelProps) {
             </div>
 
             {/* Modes de paiement */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
                 <CheckCircle className="h-5 w-5 mr-2 text-purple-600" />
                 Modes de Paiement
               </h4>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { key: 'card', label: 'Carte bancaire', icon: '💳', color: 'from-blue-500 to-blue-600' },
                   { key: 'check', label: 'Chèque', icon: '📝', color: 'from-green-500 to-green-600' },
@@ -474,22 +469,25 @@ export default function StatsPanel({ orders, onClose }: StatsPanelProps) {
                   const percentage = paidOrders > 0 ? (count / paidOrders) * 100 : 0;
                   
                   return (
-                    <div key={method.key} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                      <div className="flex items-center space-x-3">
+                    <div key={method.key} className="p-4 bg-gray-50 dark:bg-slate-700 rounded-lg text-center">
+                      <div className="flex items-center justify-center mb-2">
                         <span className="text-xl">{method.icon}</span>
-                        <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
-                          {method.label}
-                        </span>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-20 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                      <div className="text-xs text-gray-700 dark:text-gray-300 font-medium mb-2">
+                        {method.label}
+                      </div>
+                      <div className="flex flex-col items-center space-y-2">
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                           <div 
                             className={`bg-gradient-to-r ${method.color} h-2 rounded-full transition-all duration-500`}
                             style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white min-w-[2rem] text-right">
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">
                           {count}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {percentage.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -507,27 +505,30 @@ export default function StatsPanel({ orders, onClose }: StatsPanelProps) {
           </div>
 
           {/* Résumé final */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 rounded-xl p-6 border border-gray-200 dark:border-slate-600">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-              <div className="p-4">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-600">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              📊 Résumé de la période
+            </h4>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                   {new Set(filteredOrders.map(o => o.customerName)).size}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Clients uniques</div>
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {filteredOrders.reduce((sum, o) => sum + o.products.length, 0)}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Produits vendus</div>
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(0) : 0}€
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Commande moyenne</div>
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   {deliveredCount > 0 ? ((deliveredCount / totalOrders) * 100).toFixed(0) : 0}%
                 </div>
