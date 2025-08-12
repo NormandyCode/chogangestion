@@ -81,7 +81,22 @@ export default function OrderList({
   const [favoriteOrders, setFavoriteOrders] = useState<string[]>([]);
   const [archivedOrders, setArchivedOrders] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [showBulkStatusMenu, setShowBulkStatusMenu] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Fermer le menu de statut en lot quand on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showBulkStatusMenu) {
+        setShowBulkStatusMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showBulkStatusMenu]);
 
   // Raccourcis clavier
   useEffect(() => {
@@ -283,6 +298,25 @@ export default function OrderList({
     );
   };
 
+  const handleBulkStatusChange = (status: 'ordered' | 'preparing' | 'delivered') => {
+    if (selectedOrders.length === 0) return;
+    if (!onUpdateStatus) return;
+
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir changer le statut de ${selectedOrders.length} commande(s) vers "${getStatusLabel(status)}" ?`
+    );
+    
+    if (!confirmed) return;
+
+    // Mettre à jour chaque commande sélectionnée
+    selectedOrders.forEach((orderId) => {
+      onUpdateStatus(orderId, status);
+    });
+
+    setSelectedOrders([]);
+    setShowBulkStatusMenu(false);
+    toast.success(`${selectedOrders.length} commande(s) mise(s) à jour vers "${getStatusLabel(status)}"`);
+  };
   const handleGenerateBulkPDF = () => {
     if (selectedOrders.length === 0) {
       toast.error("Veuillez sélectionner au moins une commande");
@@ -602,6 +636,29 @@ export default function OrderList({
                 <Archive className="h-4 w-4 mr-1" />
                 Archiver
               </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowBulkStatusMenu(!showBulkStatusMenu)}
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                >
+                  <Package className="h-4 w-4 mr-1" />
+                  Statut
+                </button>
+                {showBulkStatusMenu && (
+                  <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
+                    {(['ordered', 'preparing', 'delivered'] as const).map((status) => (
+                      <button
+                        key={status}
+                        className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
+                        onClick={() => handleBulkStatusChange(status)}
+                      >
+                        {getStatusIcon(status)}
+                        <span>{getStatusLabel(status)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleBulkDelete}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 transition-colors"
@@ -621,136 +678,431 @@ export default function OrderList({
       )}
 
       {/* Tableau des commandes */}
-      <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-        <table className="w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead className="bg-slate-50 dark:bg-slate-800/50">
-            <tr>
-              <th className="px-3 py-3 text-left w-12">
-                <button
-                  onClick={handleSelectAll}
-                  className="flex items-center space-x-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-                  title="Ctrl+A pour tout sélectionner"
-                >
-                  {selectedOrders.length === filteredOrders.length &&
-                  filteredOrders.length > 0 ? (
-                    <CheckSquare className="h-4 w-4" />
-                  ) : (
-                    <Square className="h-4 w-4" />
-                  )}
-                </button>
-              </th>
-              <th className="px-3 py-3 text-left w-12">
-                <Star className="h-4 w-4 text-slate-400" />
-              </th>
-              <th
-                className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                onClick={() => handleSort("date")}
-              >
-                <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <span>Date</span>
-                  <SortIcon field="date" />
-                </div>
-              </th>
-              <th
-                className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                onClick={() => handleSort("customerName")}
-              >
-                <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <span>Client</span>
-                  <SortIcon field="customerName" />
-                </div>
-              </th>
-              <th
-                className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                onClick={() => handleSort("invoiceNumber")}
-              >
-                <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <span>N° Facture</span>
-                  <SortIcon field="invoiceNumber" />
-                </div>
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Montant
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Statut commande
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Contact
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Paiement
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-            {filteredOrders.map((order) => (
-              <tr
-                key={order.id}
-                className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
-                  selectedOrders.includes(order.id)
-                    ? "bg-indigo-50 dark:bg-indigo-900/20"
-                    : ""
-                }`}
-              >
-                <td className="px-3 py-4 whitespace-nowrap">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+        {/* Version desktop - tableau */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full divide-y divide-slate-200 dark:divide-slate-700">
+            <thead className="bg-slate-50 dark:bg-slate-800/50">
+              <tr>
+                <th className="px-3 py-3 text-left w-12">
                   <button
-                    onClick={() => handleSelectOrder(order.id)}
+                    onClick={handleSelectAll}
                     className="flex items-center space-x-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                    title="Ctrl+A pour tout sélectionner"
                   >
-                    {selectedOrders.includes(order.id) ? (
-                      <CheckSquare className="h-4 w-4 text-indigo-600" />
+                    {selectedOrders.length === filteredOrders.length &&
+                    filteredOrders.length > 0 ? (
+                      <CheckSquare className="h-4 w-4" />
                     ) : (
                       <Square className="h-4 w-4" />
                     )}
                   </button>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => handleToggleFavorite(order.id)}
-                    className={`p-1 rounded transition-colors ${
-                      favoriteOrders.includes(order.id)
-                        ? "text-yellow-500"
-                        : "text-gray-400"
-                    } hover:bg-yellow-50 dark:hover:bg-yellow-900/20`}
-                    title={
-                      favoriteOrders.includes(order.id)
-                        ? "Retirer des favoris"
-                        : "Ajouter aux favoris"
-                    }
+                </th>
+                <th className="px-3 py-3 text-left w-12">
+                  <Star className="h-4 w-4 text-slate-400" />
+                </th>
+                <th
+                  className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                  onClick={() => handleSort("date")}
+                >
+                  <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span>Date</span>
+                    <SortIcon field="date" />
+                  </div>
+                </th>
+                <th
+                  className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                  onClick={() => handleSort("customerName")}
+                >
+                  <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span>Client</span>
+                    <SortIcon field="customerName" />
+                  </div>
+                </th>
+                <th
+                  className="px-3 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                  onClick={() => handleSort("invoiceNumber")}
+                >
+                  <div className="flex items-center space-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span>N° Facture</span>
+                    <SortIcon field="invoiceNumber" />
+                  </div>
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Montant
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Statut commande
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Paiement
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+              {filteredOrders.map((order) => (
+                <tr
+                  key={order.id}
+                  className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
+                    selectedOrders.includes(order.id)
+                      ? "bg-indigo-50 dark:bg-indigo-900/20"
+                      : ""
+                  }`}
+                >
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleSelectOrder(order.id)}
+                      className="flex items-center space-x-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                    >
+                      {selectedOrders.includes(order.id) ? (
+                        <CheckSquare className="h-4 w-4 text-indigo-600" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleToggleFavorite(order.id)}
+                      className={`p-1 rounded transition-colors ${
+                        favoriteOrders.includes(order.id)
+                          ? "text-yellow-500"
+                          : "text-gray-400"
+                      } hover:bg-yellow-50 dark:hover:bg-yellow-900/20`}
+                      title={
+                        favoriteOrders.includes(order.id)
+                          ? "Retirer des favoris"
+                          : "Ajouter aux favoris"
+                      }
+                    >
+                      {favoriteOrders.includes(order.id) ? (
+                        <Star className="h-4 w-4 fill-current" />
+                      ) : (
+                        <StarOff className="h-4 w-4" />
+                      )}
+                    </button>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-300">
+                    {new Date(order.date).toLocaleDateString()}
+                  </td>
+                  <td className="px-3 py-4">
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-300 truncate max-w-[200px]">
+                      {order.customerName}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+                      {order.address}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-300">
+                    {order.invoiceNumber}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-300">
+                    {order.totalAmount.toFixed(2)} €
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        onClick={() =>
+                          setOpenStatusMenu(
+                            openStatusMenu === order.id ? null : order.id
+                          )
+                        }
+                      >
+                        {getStatusIcon(order.status)}
+                        <span className="ml-1">
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </button>
+                      {openStatusMenu === order.id && onUpdateStatus && (
+                        <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
+                          {(["ordered", "preparing", "delivered"] as const).map(
+                            (status) => (
+                              <button
+                                key={status}
+                                className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
+                                onClick={() =>
+                                  handleStatusChange(order.id, status)
+                                }
+                              >
+                                {getStatusIcon(status)}
+                                <span>{getStatusLabel(status)}</span>
+                              </button>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500">
+                    <div className="flex space-x-1">
+                      {order.email && (
+                        <Mail
+                          className="h-4 w-4 text-blue-500"
+                          title={order.email}
+                        />
+                      )}
+                      {order.phone && (
+                        <Phone
+                          className="h-4 w-4 text-green-500"
+                          title={order.phone}
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="relative">
+                      {order.isPaid ? (
+                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          {getPaymentMethodIcon(order.paymentMethod)}
+                          <span className="ml-1">
+                            {getPaymentMethodLabel(order.paymentMethod)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="relative inline-block text-left">
+                          <button
+                            type="button"
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                            onClick={() =>
+                              setOpenPaymentMenu(
+                                openPaymentMenu === order.id ? null : order.id
+                              )
+                            }
+                          >
+                            Non payée
+                          </button>
+                          {openPaymentMenu === order.id && (
+                            <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
+                              {(
+                                [
+                                  "card",
+                                  "check",
+                                  "cash",
+                                  "transfer",
+                                ] as PaymentMethod[]
+                              ).map((method) => (
+                                <button
+                                  key={method}
+                                  className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
+                                  onClick={() =>
+                                    handlePaymentMethodClick(order.id, method)
+                                  }
+                                >
+                                  {getPaymentMethodIcon(method)}
+                                  <span>{getPaymentMethodLabel(method)}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500">
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="p-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded transition-colors"
+                        title="Voir les détails"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setEditingOrder(order)}
+                        className="p-1 text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded transition-colors"
+                        title="Modifier la commande"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      {order.email && (
+                        <button
+                          onClick={() => {
+                            // Importer dynamiquement le service email
+                            import("../services/emailService.ts").then(
+                              ({ sendOrderConfirmationEmail }) => {
+                                sendOrderConfirmationEmail(order);
+                              }
+                            );
+                          }}
+                          className="p-1 text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                          title="Envoyer email de confirmation"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => generateInvoicePDF(order)}
+                        className="p-1 text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                        title="Générer PDF"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `${order.customerName} - ${order.invoiceNumber} - ${order.totalAmount}€`
+                          );
+                          toast.success("Infos copiées !");
+                        }}
+                        className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded transition-colors"
+                        title="Copier infos"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                      {order.phone && (
+                        <button
+                          onClick={() =>
+                            window.open(`tel:${order.phone}`, "_self")
+                          }
+                          className="p-1 text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                          title="Appeler"
+                        >
+                          <Phone className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleToggleArchive(order.id)}
+                        className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded transition-colors"
+                        title={
+                          archivedOrders.includes(order.id)
+                            ? "Désarchiver"
+                            : "Archiver"
+                        }
+                      >
+                        {archivedOrders.includes(order.id) ? (
+                          <ArchiveRestore className="h-4 w-4" />
+                        ) : (
+                          <Archive className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => onDelete(order.id)}
+                        className="p-1 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredOrders.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
                   >
-                    {favoriteOrders.includes(order.id) ? (
-                      <Star className="h-4 w-4 fill-current" />
-                    ) : (
-                      <StarOff className="h-4 w-4" />
-                    )}
-                  </button>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-300">
-                  {new Date(order.date).toLocaleDateString()}
-                </td>
-                <td className="px-3 py-4">
-                  <div className="text-sm font-medium text-slate-900 dark:text-slate-300 truncate max-w-[200px]">
+                    <div className="flex flex-col items-center">
+                      <PackageSearch className="h-12 w-12 mb-4 text-slate-400" />
+                      <p className="text-lg font-medium">
+                        {orders.length === 0
+                          ? "Aucune commande trouvée"
+                          : "Aucun résultat pour ces filtres"}
+                      </p>
+                      <p className="mt-1">
+                        {orders.length === 0
+                          ? "Commencez par créer une nouvelle commande"
+                          : "Essayez de modifier vos critères de recherche"}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Version mobile/tablet - cards */}
+        <div className="lg:hidden space-y-4 p-4">
+          {filteredOrders.map((order) => (
+            <div
+              key={order.id}
+              className={`rounded-xl border transition-all duration-200 ${
+                selectedOrders.includes(order.id)
+                  ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-600 shadow-lg"
+                  : "bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 shadow-md hover:shadow-lg"
+              }`}
+            >
+              <div className="p-4">
+                {/* Header de la card */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => handleSelectOrder(order.id)}
+                      className="flex items-center space-x-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                    >
+                      {selectedOrders.includes(order.id) ? (
+                        <CheckSquare className="h-5 w-5 text-indigo-600" />
+                      ) : (
+                        <Square className="h-5 w-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleToggleFavorite(order.id)}
+                      className={`p-1 rounded transition-colors ${
+                        favoriteOrders.includes(order.id)
+                          ? "text-yellow-500"
+                          : "text-gray-400"
+                      } hover:bg-yellow-50 dark:hover:bg-yellow-900/20`}
+                    >
+                      {favoriteOrders.includes(order.id) ? (
+                        <Star className="h-5 w-5 fill-current" />
+                      ) : (
+                        <StarOff className="h-5 w-5" />
+                      )}
+                    </button>
+                    <div className="text-sm font-bold text-slate-900 dark:text-slate-300">
+                      {order.invoiceNumber}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-slate-900 dark:text-slate-300">
+                      {order.totalAmount.toFixed(2)} €
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {new Date(order.date).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informations client */}
+                <div className="mb-3">
+                  <div className="font-medium text-slate-900 dark:text-slate-300 mb-1">
                     {order.customerName}
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+                  <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">
                     {order.address}
                   </div>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-300">
-                  {order.invoiceNumber}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-300">
-                  {order.totalAmount.toFixed(2)} €
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
+                  <div className="flex items-center space-x-4 text-sm">
+                    {order.email && (
+                      <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400">
+                        <Mail className="h-3 w-3" />
+                        <span className="truncate max-w-[120px]">{order.email}</span>
+                      </div>
+                    )}
+                    {order.phone && (
+                      <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                        <Phone className="h-3 w-3" />
+                        <span>{order.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Statuts */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                   <div className="relative">
                     <button
                       type="button"
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                       onClick={() =>
                         setOpenStatusMenu(
                           openStatusMenu === order.id ? null : order.id
@@ -781,184 +1133,137 @@ export default function OrderList({
                       </div>
                     )}
                   </div>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500">
-                  <div className="flex space-x-1">
-                    {order.email && (
-                      <Mail
-                        className="h-4 w-4 text-blue-500"
-                        title={order.email}
-                      />
-                    )}
-                    {order.phone && (
-                      <Phone
-                        className="h-4 w-4 text-green-500"
-                        title={order.phone}
-                      />
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <div className="relative">
-                    {order.isPaid ? (
-                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                        {getPaymentMethodIcon(order.paymentMethod)}
-                        <span className="ml-1">
-                          {getPaymentMethodLabel(order.paymentMethod)}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="relative inline-block text-left">
-                        <button
-                          type="button"
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                          onClick={() =>
-                            setOpenPaymentMenu(
-                              openPaymentMenu === order.id ? null : order.id
-                            )
-                          }
-                        >
-                          Non payée
-                        </button>
-                        {openPaymentMenu === order.id && (
-                          <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
-                            {(
-                              [
-                                "card",
-                                "check",
-                                "cash",
-                                "transfer",
-                              ] as PaymentMethod[]
-                            ).map((method) => (
-                              <button
-                                key={method}
-                                className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
-                                onClick={() =>
-                                  handlePaymentMethodClick(order.id, method)
-                                }
-                              >
-                                {getPaymentMethodIcon(method)}
-                                <span>{getPaymentMethodLabel(method)}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500">
-                  <div className="flex flex-wrap gap-1">
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="p-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded transition-colors"
-                      title="Voir les détails"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setEditingOrder(order)}
-                      className="p-1 text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded transition-colors"
-                      title="Modifier la commande"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    {order.email && (
+
+                  {order.isPaid ? (
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                      {getPaymentMethodIcon(order.paymentMethod)}
+                      <span className="ml-1">
+                        {getPaymentMethodLabel(order.paymentMethod)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="relative inline-block text-left">
                       <button
-                        onClick={() => {
-                          // Importer dynamiquement le service email
-                          import("../services/emailService.ts").then(
-                            ({ sendOrderConfirmationEmail }) => {
-                              sendOrderConfirmationEmail(order);
-                            }
-                          );
-                        }}
-                        className="p-1 text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
-                        title="Envoyer email de confirmation"
+                        type="button"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                        onClick={() =>
+                          setOpenPaymentMenu(
+                            openPaymentMenu === order.id ? null : order.id
+                          )
+                        }
                       >
-                        <Mail className="h-4 w-4" />
+                        Non payée
                       </button>
-                    )}
-                    <button
-                      onClick={() => generateInvoicePDF(order)}
-                      className="p-1 text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                      title="Générer PDF"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </button>
+                      {openPaymentMenu === order.id && (
+                        <div className="absolute left-0 mt-2 w-48 rounded-xl shadow-lg bg-white dark:bg-slate-700 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-200 dark:divide-slate-600">
+                          {(
+                            [
+                              "card",
+                              "check",
+                              "cash",
+                              "transfer",
+                            ] as PaymentMethod[]
+                          ).map((method) => (
+                            <button
+                              key={method}
+                              className="w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center space-x-2 transition-colors"
+                              onClick={() =>
+                                handlePaymentMethodClick(order.id, method)
+                              }
+                            >
+                              {getPaymentMethodIcon(method)}
+                              <span>{getPaymentMethodLabel(method)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedOrder(order)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    Détails
+                  </button>
+                  <button
+                    onClick={() => setEditingOrder(order)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                  >
+                    <Edit className="h-3 w-3 mr-1" />
+                    Modifier
+                  </button>
+                  <button
+                    onClick={() => generateInvoicePDF(order)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    PDF
+                  </button>
+                  {order.email && (
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(
-                          `${order.customerName} - ${order.invoiceNumber} - ${order.totalAmount}€`
+                        import("../services/emailService.ts").then(
+                          ({ sendOrderConfirmationEmail }) => {
+                            sendOrderConfirmationEmail(order);
+                          }
                         );
-                        toast.success("Infos copiées !");
                       }}
-                      className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded transition-colors"
-                      title="Copier infos"
+                      className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
                     >
-                      <Copy className="h-4 w-4" />
+                      <Mail className="h-3 w-3 mr-1" />
+                      Email
                     </button>
-                    {order.phone && (
-                      <button
-                        onClick={() =>
-                          window.open(`tel:${order.phone}`, "_self")
-                        }
-                        className="p-1 text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
-                        title="Appeler"
-                      >
-                        <Phone className="h-4 w-4" />
-                      </button>
+                  )}
+                  <button
+                    onClick={() => handleToggleArchive(order.id)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                  >
+                    {archivedOrders.includes(order.id) ? (
+                      <>
+                        <ArchiveRestore className="h-3 w-3 mr-1" />
+                        Désarchiver
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-3 w-3 mr-1" />
+                        Archiver
+                      </>
                     )}
-                    <button
-                      onClick={() => handleToggleArchive(order.id)}
-                      className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded transition-colors"
-                      title={
-                        archivedOrders.includes(order.id)
-                          ? "Désarchiver"
-                          : "Archiver"
-                      }
-                    >
-                      {archivedOrders.includes(order.id) ? (
-                        <ArchiveRestore className="h-4 w-4" />
-                      ) : (
-                        <Archive className="h-4 w-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => onDelete(order.id)}
-                      className="p-1 text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filteredOrders.length === 0 && (
-              <tr>
-                <td
-                  colSpan={10}
-                  className="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
-                >
-                  <div className="flex flex-col items-center">
-                    <PackageSearch className="h-12 w-12 mb-4 text-slate-400" />
-                    <p className="text-lg font-medium">
-                      {orders.length === 0
-                        ? "Aucune commande trouvée"
-                        : "Aucun résultat pour ces filtres"}
-                    </p>
-                    <p className="mt-1">
-                      {orders.length === 0
-                        ? "Commencez par créer une nouvelle commande"
-                        : "Essayez de modifier vos critères de recherche"}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  </button>
+                  <button
+                    onClick={() => onDelete(order.id)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {filteredOrders.length === 0 && (
+            <div className="text-center py-12">
+              <PackageSearch className="h-16 w-16 mx-auto mb-4 text-slate-400" />
+              <p className="text-lg font-medium text-slate-900 dark:text-slate-300">
+                {orders.length === 0
+                  ? "Aucune commande trouvée"
+                  : "Aucun résultat pour ces filtres"}
+              </p>
+              <p className="mt-1 text-slate-500 dark:text-slate-400">
+                {orders.length === 0
+                  ? "Commencez par créer une nouvelle commande"
+                  : "Essayez de modifier vos critères de recherche"}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
       </div>
 
       {selectedOrder && (
